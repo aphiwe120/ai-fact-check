@@ -1,86 +1,55 @@
 import os
-import requests
 from flask import Flask, request, jsonify, render_template
 from dotenv import load_dotenv
+import google.generativeai as genai
 import database as db
-from ai_model import extract_verifiable_statements # Assuming this function exists
+from ai_model import verify_claim_with_ai
 
 load_dotenv()
 
 app = Flask(__name__)
+# Explicitly define template and static folder locations to prevent TemplateNotFound errors.
+app = Flask(__name__,
+            template_folder='templates',
+            static_folder='static')
 
-SERPER_API_KEY = os.getenv("SERPER_API_KEY")
 
-def search_serper(query):
-    """
-    Performs a search using the Serper.dev Google Search API.
-    """
-    if not SERPER_API_KEY:
-        return {"error": "SERPER_API_KEY not configured."}
-
-    url = "https://google.serper.dev/search"
-    payload = {"q": query}
-    headers = {'X-API-KEY': SERPER_API_KEY, 'Content-Type': 'application/json'}
-
-    try:
-        response = requests.post(url, headers=headers, json=payload)
-        response.raise_for_status()
-        return response.json()
-    except requests.exceptions.RequestException as e:
-        print(f"Error calling Serper API: {e}")
-        return {"error": f"API request failed: {e}"}
+# --- API Key Configuration ---
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+if not GEMINI_API_KEY:
+    raise ValueError("Error: GEMINI_API_KEY not found. Please check your .env file.")
+if not os.getenv("SERPER_API_KEY"):
+    raise ValueError("Error: SERPER_API_KEY not found. Please check your .env file.")
+genai.configure(api_key=GEMINI_API_KEY)
 
 @app.route('/')
 def index():
     """Serves the main HTML page from the 'templates' folder."""
     return render_template('index.html')
 
-@app.route('/api/check-claims', methods=['POST'])
-def check_claims():
+@app.route('/api/check-claims', methods=['GET'])
+def fact_check_endpoint():
     """
-    Receives text, extracts claims, saves them, and returns them for processing.
+    Receives a single claim, verifies it using the AI model, and returns the result.
+    This endpoint is designed for the main1.html/main1.js interface.
     """
-    data = request.get_json()
-    if not data or 'text' not in data:
-        return jsonify({"error": "Invalid input. 'text' field is required."}), 400
+    claim_text = request.args.get('claim')
+    if not claim_text:
+        return jsonify({"error": "Invalid input. 'claim' parameter is required."}), 400
 
-    text_to_check = data['text']
-    
-    # 1. Use AI to extract verifiable statements
-    claims = extract_verifiable_statements(text_to_check)
-    if not claims:
-        return jsonify({"message": "No verifiable claims found in the provided text."})
+    # 1. Save the claim to the database
+    claim_id = db.create_fact_check(claim_text)
+    if not claim_id:
+        return jsonify({"error": "Failed to save claim to the database."}), 500
 
-    # 2. Save claims to the database and get their IDs
-    saved_claims = []
-    for claim_text in claims:
-        claim_id = db.create_fact_check(claim_text)
-        if claim_id:
-            saved_claims.append({"id": claim_id, "claim": claim_text, "status": "pending"})
+    # 2. Verify the claim using the AI model
+    verification_result = verify_claim_with_ai(claim_text)
+    analysis = verification_result.get("analysis", "Analysis could not be generated.")
+    result_verdict = verification_result.get("result", "Uncertain")
 
-    return jsonify(saved_claims)
-
-@app.route('/api/verify-claim/<int:claim_id>', methods=['GET'])
-def verify_claim(claim_id):
-    """
-    Takes a claim ID, runs it through Serper, and updates the database.
-    """
-    claim_record = db.get_fact_check_by_id(claim_id)
-    if not claim_record:
-        return jsonify({"error": "Claim not found."}), 404
-
-    search_results = search_serper(claim_record['claim'])
-    
-    # Basic credibility logic (can be greatly improved)
-    analysis = "Could not verify."
-    result = "Uncertain"
-    if "organic" in search_results and len(search_results["organic"]) > 0:
-        analysis = f"Found {len(search_results['organic'])} potential sources. Top source: {search_results['organic'][0]['link']}"
-        result = "Needs Review" # Mark as needing human review
-
-    db.update_fact_check(claim_id, 'completed', result, analysis)
-    
-    return jsonify({"id": claim_id, "status": "completed", "result": result, "analysis": analysis})
+    # 3. Update the database record with the results
+    db.update_fact_check(claim_id, 'completed', result_verdict, analysis)
+    return jsonify({"claim": claim_text, "verdict": result_verdict, "summary": analysis})
 
 if __name__ == '__main__':
     app.run(debug=True, port=5001)
