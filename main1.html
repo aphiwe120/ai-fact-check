@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Checkmate - AI Powered Fact Checker</title>
+  <link rel="icon" type="image/png" href="original.png"/>
+ <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+
+  <header>
+  <div class="container">
+    <div class="logo">
+      <img src="logo_clean.png" alt="Checkmate Logo">
+      <div class="text">
+        <h1>Checkmate</h1>
+        <p>Verify Information Instantly</p>
+      </div>
+    </div>
+
+    <nav>
+      <ul>
+        <li><a href="howitworks.html">How It Works</a></li>
+        <li><a href="About.html">About</a></li>
+        <li><a href="contact.html">Contact</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+
+  <main>
+    <section class="hero">
+    <div id="intro">
+      <h1>Combat Misinformation with Facts</h1>
+    <p>Stay informed and empowered by verifying the accuracy of what you read, hear, or share.
+Instantly fact-check statements with trusted information sources.</p>
+
+
+      <div id="statement-form" class="form-section">
+      <div class="search-box">
+        <input id="claimInput" type="text" placeholder="Enter a claim to fact-check...">
+        <button id="factCheckBtn">Fact Check</button>
+      </div>
+    </div>
+        </div>
+
+    </section>
+      
+
+    
+    <div id="loading" class="loading hidden">
+      Checking claim... please wait ⏳
+    </div>
+
+    
+    <div id="result" class="card hidden">
+  <div class="result-header" id="resultHeader">
+    <span id="verdictIcon" style="font-size:24px;">❌</span>
+    <div>
+      <h2 id="verdictText">Marked as False</h2>
+      <p>Credibility Score: <strong id="credibilityScore">0%</strong></p>
+    </div>
+  </div>
+
+  <h3>Claim Analyzed:</h3>
+  <p class="claim" id="claimText"></p>
+
+  <h3>Summary:</h3>
+  <p id="summaryText"></p>
+
+  <h3>Sources:</h3>
+  <ul id="sourcesList"></ul>
+
+  <h3>Related Claims:</h3>
+  <ul id="relatedList"></ul>
+
+  <p class="footer">Checked on <span id="checkedAt">December 15, 2024</span></p>
+  <button class="btn" onclick="newCheck()">Check Another Claim</button>
+</div>
+  </main>
+
+  <footer>
+    <div class="steps">
+        <div class="step">
+          <div class="step-number">1</div>
+          <h3>Submit Your Claim</h3>
+          <p>Enter text or provide a URL to fact-check</p>
+        </div>
+        <div class="step">
+          <div class="step-number">2</div>
+          <h3>AI Analysis</h3>
+          <p>Our system analyzes multiple credible sources</p>
+        </div>
+        <div class="step">
+          <div class="step-number">3</div>
+          <h3>Get Results</h3>
+          <p>Receive detailed verification with sources</p>
+        </div>
+      </div>
+    </div>
+    <p>FactCheck Pro helps you verify information quickly and accurately. 
+      Always cross-reference with multiple sources for important decisions.</p>
+    <p style="font-size:12px;">This is a demonstration app with mock data for educational purposes.</p>
+  </footer>
+
+  <script src="Main.js"></script>
+</body>
+</html>
