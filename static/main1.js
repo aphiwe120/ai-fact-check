@@ -1,10 +1,11 @@
 // 👉 1. Replace this with your API base URL
-const API_BASE_URL = "http://127.0.0.1:8000";  
+const API_BASE_URL = "http://127.0.0.1:5001";  
 
 // 👉 2. Adjust this function to call your API route
-async function fetchFactCheck(claim) {
+async function fetchFactCheck() {
   // Example: if your API endpoint is /fact-check?claim=...
-  const response = await fetch(`${API_BASE_URL}/fact-check?claim=${encodeURIComponent(claim)}`);
+  const response = await fetch(`${API_BASE_URL}/api/check-claims?claim=${encodeURIComponent(claim)}`);
+
   
   if (!response.ok) {
     throw new Error("API request failed");

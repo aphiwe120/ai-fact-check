@@ -1,0 +1,77 @@
+<!-- templates/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Checkmate - AI Powered Fact Checker</title>
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='original.png') }}"/>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+  <header>
+    <div class="container">
+      <div class="logo">
+        <img src="{{ url_for('static', filename='logo_clean.png') }}" alt="Checkmate Logo">
+        <div class="text">
+          <h1>Checkmate</h1>
+          <p>Verify Information Instantly</p>
+        </div>
+      </div>
+      <nav>
+        <ul>
+          <li><a href="#">How It Works</a></li>
+          <li><a href="#">About</a></li>
+          <li><a href="#">Contact</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div id="intro">
+        <h1>Combat Misinformation with Facts</h1>
+        <p>Stay informed and empowered by verifying the accuracy of what you read, hear, or share. Instantly fact-check statements with trusted information sources.</p>
+
+        <div id="statement-form" class="form-section">
+          <div class="search-box">
+            <input id="claimInput" type="text" placeholder="Enter a claim to fact-check...">
+            <button id="factCheckBtn">Fact Check</button>
+          </div>
+        </div>
+    </section>
+
+    <div id="loading" class="loading hidden">
+      Checking claim... please wait ⏳
+    </div>
+
+    <div id="result" class="card hidden">
+      <div class="result-header" id="resultHeader">
+        <span id="verdictIcon" style="font-size:24px;">❌</span>
+        <div>
+          <h2 id="verdictText">Marked as False</h2>
+          <p>Credibility Score: <strong id="credibilityScore">0%</strong></p>
+        </div>
+      </div>
+
+      <h3>Claim Analyzed:</h3>
+      <p class="claim" id="claimText"></p>
+
+      <h3>Summary:</h3>
+      <p id="summaryText"></p>
+
+      <h3>Sources:</h3>
+      <ul id="sourcesList"></ul>
+
+      <h3>Related Claims:</h3>
+      <ul id="relatedList"></ul>
+
+      <p class="footer">Checked on <span id="checkedAt"></span></p>
+      <button class="btn" onclick="newCheck()">Check Another Claim</button>
+    </div>
+  </main>
+  <script src="{{ url_for('static', filename='main.js') }}"></script>
+</body>
+</html>

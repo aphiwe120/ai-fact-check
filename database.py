@@ -1,104 +1,84 @@
-import os
-import psycopg2
-from psycopg2 import pool
+from sqlmodel import select
+from models import FactCheck, get_session, create_db_and_tables
 from contextlib import contextmanager
-from dotenv import load_dotenv
-
-load_dotenv()
-
-db_pool = None
-try:
-    db_pool = pool.SimpleConnectionPool(
-        minconn=1,
-        maxconn=20,
-        user=os.getenv("DB_USER"),
-        password=os.getenv("DB_PASSWORD"),
-        host=os.getenv("DB_HOST"),
-        port=os.getenv("DB_PORT", "5432"),
-        database=os.getenv("DB_NAME")
-    )
-except psycopg2.OperationalError as e:
-    print(f"Error: Could not connect to the database. Please check your environment variables. Details: {e}")
+from datetime import datetime
 
 @contextmanager
-def get_db_connection():
-    """
-    A context manager to get a connection from the pool.
-    This will automatically handle getting a connection and putting it back.
-    
-    Usage:
-    with get_db_connection() as conn:
-        with conn.cursor() as cursor:
-            cursor.execute("SELECT * FROM my_table;")
-    """
-    if db_pool is None:
-        raise ConnectionError("Database connection pool is not available. Check initial connection.")
-        
-    conn = None
+def get_db_session():
+    """A context manager to handle database sessions"""
+    session = get_session()
     try:
-        conn = db_pool.getconn()
-        yield conn
+        yield session
+        session.commit()
+    except Exception:
+        session.rollback()
+        raise
     finally:
-        if conn:
-            db_pool.putconn(conn)
+        session.close()
 
-def get_fact_check_by_id(check_id):
-    """
-    Retrieves a single fact-check record from the database by its ID.
-    Returns a dictionary representing the record, or None if not found.
-    """
+def create_fact_check(claim: str) -> int:
+    """Creates a new fact check record and returns its ID"""
     try:
-        with get_db_connection() as conn:
-            with conn.cursor() as cursor:
-                cursor.execute(
-                    "SELECT id, claim, status, result, source_url, analysis, created_at, updated_at FROM fact_checks WHERE id = %s",
-                    (check_id,) # The comma is important to make it a tuple
-                )
-                record = cursor.fetchone()
-                if record:
-                    # Get column names from the cursor description
-                    columns = [desc[0] for desc in cursor.description]
-                    # Return the record as a dictionary
-                    return dict(zip(columns, record))
-                return None # No record found with that ID
-    except (psycopg2.Error, ConnectionError) as e:
-        print(f"Error retrieving fact-check with id {check_id}: {e}")
+        with get_db_session() as session:
+            fact_check = FactCheck(claim=claim, status="pending")
+            session.add(fact_check)
+            session.commit()
+            session.refresh(fact_check)
+            print(f"✅ Fact check created with ID: {fact_check.id}")
+            return fact_check.id
+    except Exception as e:
+        print(f"❌ Error creating fact check: {e}")
         return None
 
-def create_fact_check(claim):
-    """
-    Inserts a new claim into the fact_checks table with a 'pending' status.
-    Returns the ID of the newly created record.
-    """
+def update_fact_check(check_id: int, status: str, result: str, analysis: str):
+    """Updates an existing fact check record"""
     try:
-        with get_db_connection() as conn:
-            with conn.cursor() as cursor:
-                cursor.execute(
-                    "INSERT INTO fact_checks (claim, status) VALUES (%s, %s) RETURNING id",
-                    (claim, 'pending')
-                )
-                new_id = cursor.fetchone()[0]
-                conn.commit()
-                return new_id
-    except (psycopg2.Error, ConnectionError) as e:
-        print(f"Error creating fact-check: {e}")
+        with get_db_session() as session:
+            statement = select(FactCheck).where(FactCheck.id == check_id)
+            fact_check = session.exec(statement).first()
+            
+            if fact_check:
+                fact_check.status = status
+                fact_check.result = result
+                fact_check.analysis = analysis
+                fact_check.updated_at = datetime.utcnow()
+                session.add(fact_check)
+                print(f"✅ Fact check {check_id} updated successfully")
+            else:
+                print(f"❌ Fact check with ID {check_id} not found")
+    except Exception as e:
+        print(f"❌ Error updating fact check: {e}")
+
+def get_fact_check_by_id(check_id: int) -> dict:
+    """Retrieves a fact check by ID"""
+    try:
+        with get_db_session() as session:
+            statement = select(FactCheck).where(FactCheck.id == check_id)
+            fact_check = session.exec(statement).first()
+            
+            if fact_check:
+                return {
+                    "id": fact_check.id,
+                    "claim": fact_check.claim,
+                    "status": fact_check.status,
+                    "result": fact_check.result,
+                    "source_url": fact_check.source_url,
+                    "analysis": fact_check.analysis,
+                    "created_at": fact_check.created_at,
+                    "updated_at": fact_check.updated_at
+                }
+            return None
+    except Exception as e:
+        print(f"❌ Error retrieving fact check: {e}")
         return None
 
-def update_fact_check(check_id, status, result, analysis):
-    """
-    Updates an existing fact-check record with the analysis results.
-    """
+def get_all_fact_checks(limit: int = 100):
+    """Gets all fact checks (for admin purposes)"""
     try:
-        with get_db_connection() as conn:
-            with conn.cursor() as cursor:
-                cursor.execute(
-                    """
-                    UPDATE fact_checks 
-                    SET status = %s, result = %s, analysis = %s 
-                    WHERE id = %s
-                    """,
-                    (status, result, analysis, check_id)
-                )
-                conn.commit()
-    except (psycopg2.Error, ConnectionError) as e:
-        print(f"Error updating fact-check with id {check_id}: {e}")
+        with get_db_session() as session:
+            statement = select(FactCheck).order_by(FactCheck.created_at.desc()).limit(limit)
+            fact_checks = session.exec(statement).all()
+            return fact_checks
+    except Exception as e:
+        print(f"❌ Error retrieving fact checks: {e}")
+        return []

@@ -229,3 +229,23 @@ footer {
   align-items: center;
   gap: 10px;
 }
+
+/* Green success for legitimate */
+.result-header.true {
+  background-color: #e9f9ec;
+  border-left: 5px solid #2ecc71;
+  padding: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Neutral/unclear */
+.result-header.unclear, .result-header.partially-true {
+  background-color: #fff3cd;
+  border-left: 5px solid #f1c40f;
+  padding: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
