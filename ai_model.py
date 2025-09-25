@@ -41,49 +41,26 @@ def parse_ai_response(text: str) -> dict:
 
 def verify_claim_with_ai(claim: str) -> dict:
     """
-    Uses Gemini with the Serper search tool to verify a single claim.
-    Returns a dictionary with the analysis and a result verdict.
+    Simplified version that avoids function calling issues.
     """
     print(f"...Verifying claim with Gemini: {claim}...")
     try:
-        tools = [genai.protos.Tool(function_declarations=[
-            genai.protos.FunctionDeclaration(
-                name='get_search_results',
-                description='Gets real-time search results from the web for a given query to verify a statement.',
-                parameters=genai.protos.Schema(type=genai.protos.Type.OBJECT, properties={'query': genai.protos.Schema(type=genai.protos.Type.STRING)}, required=['query'])
-            )
-        ])]
-
-        # Force the model to use the search tool for fact-checking
-        tool_config = genai.protos.ToolConfig(
-            function_calling_config=genai.protos.FunctionCallingConfig(mode=genai.protos.FunctionCallingConfig.Mode.ANY)
-        )
-
-        model = genai.GenerativeModel(model_name='gemini-1.5-pro', tools=tools, tool_config=tool_config)
-        chat = model.start_chat()
-
+        # Use a simpler approach without function calling
+        model = genai.GenerativeModel(model_name='gemini-1.5-pro')
+        
         prompt = f"""
-        Please fact-check this statement: '{claim}'. Use the search tool to find evidence.
-        Your response MUST include a final verdict at the end in the format: [VERDICT: verdict_value]
-        The verdict_value must be one of: 'True', 'False', 'Partially True', 'Misleading', 'Unclear'.
-        After the verdict, provide a brief analysis summarizing the findings and citing sources.
+        Please fact-check this statement: '{claim}'. 
+        Provide a clear verdict (True/False/Partially True/Misleading/Unclear) and analysis.
         """
-        response = chat.send_message(prompt)
-        # The response content is nested inside the 'candidates' attribute.
-        part = response.candidates[0].content.parts[0]
-
-        # The model is configured to return a function call. We must check for it and execute it.
-        if part.function_call and part.function_call.name == 'get_search_results':
-            query = part.function_call.args['query']
-            search_results = get_search_results(query)
-            # Send the search results back to the model for the final analysis.
-            final_response = chat.send_message(
-                genai.protos.Part(function_response=genai.protos.FunctionResponse(name='get_search_results', response={'result': search_results}))
-            )
-            return parse_ai_response(final_response.text)
-        else:
-            # Fallback in case the model responds with text directly.
+        
+        response = model.generate_content(prompt)
+        
+        # Simple text extraction
+        if hasattr(response, 'text'):
             return parse_ai_response(response.text)
+        else:
+            return parse_ai_response(str(response))
+            
     except Exception as e:
         print(f"An error occurred during fact-check: {e}")
         return {"analysis": f"An error occurred: {e}", "result": "Error"}
