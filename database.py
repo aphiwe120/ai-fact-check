@@ -63,4 +63,42 @@ def get_fact_check_by_id(check_id):
                 return None # No record found with that ID
     except (psycopg2.Error, ConnectionError) as e:
         print(f"Error retrieving fact-check with id {check_id}: {e}")
-        return None                
+        return None
+
+def create_fact_check(claim):
+    """
+    Inserts a new claim into the fact_checks table with a 'pending' status.
+    Returns the ID of the newly created record.
+    """
+    try:
+        with get_db_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    "INSERT INTO fact_checks (claim, status) VALUES (%s, %s) RETURNING id",
+                    (claim, 'pending')
+                )
+                new_id = cursor.fetchone()[0]
+                conn.commit()
+                return new_id
+    except (psycopg2.Error, ConnectionError) as e:
+        print(f"Error creating fact-check: {e}")
+        return None
+
+def update_fact_check(check_id, status, result, analysis):
+    """
+    Updates an existing fact-check record with the analysis results.
+    """
+    try:
+        with get_db_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    """
+                    UPDATE fact_checks 
+                    SET status = %s, result = %s, analysis = %s 
+                    WHERE id = %s
+                    """,
+                    (status, result, analysis, check_id)
+                )
+                conn.commit()
+    except (psycopg2.Error, ConnectionError) as e:
+        print(f"Error updating fact-check with id {check_id}: {e}")
